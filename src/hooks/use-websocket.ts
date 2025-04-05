@@ -8,6 +8,7 @@ interface UseWebSocketOptions {
   onMessage?: (message: WebSocketMessage) => void;
   maxReconnectAttempts?: number;
   reconnectInterval?: number;
+  authToken?: string; // Добавляем опцию для авторизационного токена
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
@@ -19,7 +20,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const {
     maxReconnectAttempts = 5,
     reconnectInterval = 3000,
-    onMessage
+    onMessage,
+    authToken
   } = options;
 
   // Setup message handler if provided
@@ -78,14 +80,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         reconnectAttemptsRef.current += 1;
         if (options.url) {
           console.log(`Reconnecting to ${options.url}...`);
-          webSocketService.connect(options.url);
+          webSocketService.connect(options.url, authToken);
         }
       }, delay);
     };
 
     // Connect if URL is provided and reconnectOnMount is true
     if (options.url && options.reconnectOnMount) {
-      webSocketService.connect(options.url);
+      webSocketService.connect(options.url, authToken);
     }
 
     // Cleanup on unmount
@@ -95,7 +97,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         window.clearTimeout(reconnectTimerRef.current);
       }
     };
-  }, [options.url, options.reconnectOnMount, maxReconnectAttempts, reconnectInterval]);
+  }, [options.url, options.reconnectOnMount, maxReconnectAttempts, reconnectInterval, authToken]);
 
   // Helper to send a message
   const sendMessage = useCallback((type: string, payload: any): boolean => {
@@ -108,14 +110,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, []);
 
   // Connect to WebSocket server
-  const connect = useCallback((url?: string) => {
+  const connect = useCallback((url?: string, token?: string) => {
     if (url || options.url) {
       reconnectAttemptsRef.current = 0;
-      webSocketService.connect(url || options.url || '');
+      webSocketService.connect(url || options.url || '', token || authToken);
     } else {
       console.error('No WebSocket URL provided');
     }
-  }, [options.url]);
+  }, [options.url, authToken]);
 
   // Disconnect from WebSocket server
   const disconnect = useCallback(() => {

@@ -8,6 +8,7 @@ import { useSimulation } from '@/contexts/SimulationContext';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   mockAthletes, 
   mockLiveRaceData, 
@@ -24,6 +25,7 @@ import AthletePerformanceChart from '@/components/AthletePerformanceChart';
 const RaceAnalysis = () => {
   const { isConnected, connectToServer, disconnectFromServer } = useSimulation();
   const [serverUrl, setServerUrl] = useState<string>('');
+  const [authToken, setAuthToken] = useState<string>('');
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>(mockAthletes[0]?.id || '');
   const [liveRaceData, setLiveRaceData] = useState(mockLiveRaceData);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -32,6 +34,7 @@ const RaceAnalysis = () => {
   const { connectionState, sendMessage, onMessage } = useWebSocket({
     url: import.meta.env.VITE_CENTRIFUGO_URL || undefined,
     reconnectOnMount: true,
+    authToken: import.meta.env.VITE_AUTH_TOKEN,
     onMessage: (message) => {
       console.log('Received WebSocket message:', message);
       handleWebSocketMessage(message);
@@ -171,7 +174,7 @@ const RaceAnalysis = () => {
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
     if (serverUrl) {
-      connectToServer(serverUrl);
+      connectToServer(serverUrl, authToken);
     }
   };
 
@@ -179,6 +182,7 @@ const RaceAnalysis = () => {
   const handleDisconnect = () => {
     disconnectFromServer();
     setServerUrl('');
+    setAuthToken('');
   };
 
   return (
@@ -215,14 +219,29 @@ const RaceAnalysis = () => {
                   <span>Отключиться от сервера</span>
                 </Button>
               ) : (
-                <form onSubmit={handleConnect} className="flex flex-col md:flex-row gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Введите URL сервера, например ws://localhost:8080"
-                    value={serverUrl}
-                    onChange={(e) => setServerUrl(e.target.value)}
-                    className="flex-1"
-                  />
+                <form onSubmit={handleConnect} className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="server-url">URL сервера</Label>
+                    <Input
+                      id="server-url"
+                      type="text"
+                      placeholder="Введите URL сервера, например ws://localhost:8080"
+                      value={serverUrl}
+                      onChange={(e) => setServerUrl(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="auth-token">Токен авторизации (если требуется)</Label>
+                    <Input
+                      id="auth-token"
+                      type="text"
+                      placeholder="Введите токен авторизации"
+                      value={authToken}
+                      onChange={(e) => setAuthToken(e.target.value)}
+                    />
+                  </div>
+                  
                   <Button 
                     type="submit"
                     className="flex items-center space-x-2"

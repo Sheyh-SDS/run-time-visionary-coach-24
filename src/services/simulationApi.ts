@@ -85,8 +85,11 @@ class SimulationApi {
   private cache: Cache = new Cache();
   private liveRaceInterval: NodeJS.Timeout | null = null;
   private liveRaceCallbacks = new Set<(data: LiveRaceData) => void>();
+  private authToken: string | undefined;
 
-  init(wsUrl?: string): void {
+  init(wsUrl?: string, authToken?: string): void {
+    this.authToken = authToken;
+    
     if (wsUrl) {
       webSocketService.on(SIMULATION_MESSAGES.SIMULATION_RESULT, this.handleSimulationResult);
       webSocketService.on(SIMULATION_MESSAGES.ATHLETES_LIST, this.handleAthletesList);
@@ -96,7 +99,7 @@ class SimulationApi {
       webSocketService.on(SIMULATION_MESSAGES.PROBABILITY_RESULTS, this.handleProbabilityResults);
       webSocketService.on(SIMULATION_MESSAGES.ERROR, this.handleError);
       
-      webSocketService.connect(wsUrl);
+      webSocketService.connect(wsUrl, authToken);
       
       webSocketService.onStateChange((state) => {
         this.isConnected = state === 'open';
@@ -109,6 +112,7 @@ class SimulationApi {
       this.mockMode = false;
     } else {
       this.mockMode = true;
+      this.authToken = undefined;
     }
   }
 
@@ -632,8 +636,8 @@ export const simulationApi = new SimulationApi();
 
 simulationApi.init();
 
-export function connectToSimulationServer(wsUrl: string) {
-  simulationApi.init(wsUrl);
+export function connectToSimulationServer(wsUrl: string, authToken?: string) {
+  simulationApi.init(wsUrl, authToken);
 }
 
 export function connectToUnitySimulation(unityInstance: any) {

@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 interface SimulationContextType {
   isConnected: boolean;
   connectionState: WebSocketState;
-  connectToServer: (url: string) => void;
+  connectToServer: (url: string, authToken?: string) => void;
   disconnectFromServer: () => void;
   connectionError: string | null;
 }
@@ -27,6 +27,7 @@ const SimulationContext = createContext<SimulationContextType>({
 // Context provider component
 export const SimulationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [serverUrl, setServerUrl] = useState<string | undefined>(undefined);
+  const [authToken, setAuthToken] = useState<string | undefined>(undefined);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   
@@ -39,6 +40,7 @@ export const SimulationProvider: React.FC<{ children: ReactNode }> = ({ children
   } = useWebSocket({
     url: serverUrl,
     reconnectOnMount: !!serverUrl,
+    authToken: authToken,
     onMessage: (message) => {
       // Handle global message processing if needed
       console.log('WebSocket message received:', message);
@@ -74,12 +76,18 @@ export const SimulationProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [connectionState, serverUrl, queryClient]);
 
   // Connect to the simulation server
-  const connectToServer = (url: string) => {
+  const connectToServer = (url: string, token?: string) => {
     try {
       setServerUrl(url);
-      connect(url);
-      simulationApi.init(url);
+      setAuthToken(token);
+      connect(url, token);
+      simulationApi.init(url, token);
       setConnectionError(null);
+      
+      toast({
+        title: "Подключение...",
+        description: "Попытка подключения к серверу симуляции."
+      });
     } catch (error) {
       console.error("Error connecting to server:", error);
       setConnectionError("Ошибка при подключении к серверу");
@@ -96,6 +104,7 @@ export const SimulationProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       disconnect();
       setServerUrl(undefined);
+      setAuthToken(undefined);
       // Revert to mock mode
       simulationApi.init();
       toast({

@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 
 // WebSocket connection states
@@ -17,21 +16,40 @@ class WebSocketService {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private messageHandlers: Record<string, ((payload: any) => void)[]> = {};
   private stateChangeHandlers: ((state: WebSocketState) => void)[] = [];
+  private authToken: string | undefined;
 
   // Connect to WebSocket server
-  connect(url: string): void {
+  connect(url: string, authToken?: string): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
       return;
     }
 
+    // Save the auth token
+    this.authToken = authToken;
+    
     try {
-      this.socket = new WebSocket(url);
+      console.log(`Connecting to WebSocket server at ${url}`);
+      
+      let finalUrl = url;
+      // Если токен предоставлен, добавляем его как параметр запроса
+      if (authToken) {
+        const separator = url.includes('?') ? '&' : '?';
+        finalUrl = `${url}${separator}token=${encodeURIComponent(authToken)}`;
+        console.log(`Auth token provided, connecting with token`);
+      }
+      
+      this.socket = new WebSocket(finalUrl);
       this.registerSocketListeners();
       this.notifyStateChange('connecting');
     } catch (error) {
       console.error('WebSocket connection error:', error);
       this.notifyStateChange('error');
+      toast({
+        title: "Ошибка подключения",
+        description: "Не удалось установить WebSocket соединение.",
+        variant: "destructive"
+      });
       this.attemptReconnect();
     }
   }
@@ -40,15 +58,22 @@ class WebSocketService {
   private registerSocketListeners(): void {
     if (!this.socket) return;
 
-    this.socket.onopen = () => {
+    this.socket.onopen = (event) => {
       console.log('WebSocket connection established');
       this.reconnectAttempts = 0;
       this.notifyStateChange('open');
+      
+      // If we have an auth token, send authentication message
+      if (this.authToken) {
+        this.send('authenticate', { token: this.authToken });
+        console.log('Authentication message sent');
+      }
     };
 
     this.socket.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
+        console.log('Received message:', message);
         this.handleMessage(message);
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -192,6 +217,9 @@ class WebSocketService {
       this.socket.close();
       this.socket = null;
     }
+    
+    // Clear the auth token when disconnecting
+    this.authToken = undefined;
   }
 
   // Get current WebSocket state
