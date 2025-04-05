@@ -6,6 +6,8 @@ import LiveRaceViewer from '@/components/LiveRaceViewer';
 import ProbabilityTable from '@/components/ProbabilityTable';
 import { useSimulation } from '@/contexts/SimulationContext';
 import { useWebSocket } from '@/hooks/use-websocket';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   mockAthletes, 
   mockLiveRaceData, 
@@ -14,13 +16,14 @@ import {
 } from '@/data/mockData';
 import { Athlete, PositionProbability, TopNProbability } from '@/types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { ChartContainer } from '@/components/ui/chart';
 import PerformanceChart from '@/components/PerformanceChart';
 import AthletePerformanceChart from '@/components/AthletePerformanceChart';
 
 const RaceAnalysis = () => {
-  const { isConnected } = useSimulation();
+  const { isConnected, connectToServer, disconnectFromServer } = useSimulation();
+  const [serverUrl, setServerUrl] = useState<string>('');
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>(mockAthletes[0]?.id || '');
   const [liveRaceData, setLiveRaceData] = useState(mockLiveRaceData);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -164,6 +167,20 @@ const RaceAnalysis = () => {
     };
   });
 
+  // Handle server connection
+  const handleConnect = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (serverUrl) {
+      connectToServer(serverUrl);
+    }
+  };
+
+  // Handle server disconnection
+  const handleDisconnect = () => {
+    disconnectFromServer();
+    setServerUrl('');
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -173,6 +190,51 @@ const RaceAnalysis = () => {
             Анализ соревновательных показателей, вероятностей и результатов в реальном времени
           </p>
         </div>
+
+        {/* Server Connection Form */}
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium">Подключение к серверу симуляции</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-sm">
+                  {isConnected ? 'Подключено к серверу' : 'Нет подключения к серверу'}
+                </span>
+              </div>
+              
+              {isConnected ? (
+                <Button 
+                  variant="destructive" 
+                  className="w-full md:w-auto flex items-center space-x-2"
+                  onClick={handleDisconnect}
+                >
+                  <WifiOff className="w-4 h-4" />
+                  <span>Отключиться от сервера</span>
+                </Button>
+              ) : (
+                <form onSubmit={handleConnect} className="flex flex-col md:flex-row gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Введите URL сервера, например ws://localhost:8080"
+                    value={serverUrl}
+                    onChange={(e) => setServerUrl(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="submit"
+                    className="flex items-center space-x-2"
+                  >
+                    <Wifi className="w-4 h-4" />
+                    <span>Подключиться</span>
+                  </Button>
+                </form>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {connectionState !== 'open' && (
           <Alert className="mb-4">
